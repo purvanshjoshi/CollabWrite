@@ -1,0 +1,112 @@
+version: '3.8'
+
+services:
+  # ===========================================================================
+  # PostgreSQL Database (Data Layer + WAL)
+  # ===========================================================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: collabwrite_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-collabwrite}
+      POSTGRES_USER: ${DB_USER:-collabuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-collabpassword}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql
+      - ./database/seeds/001_sample_data.sql:/docker-entrypoint-initdb.d/02_seed.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-collabuser} -d ${DB_NAME:-collabwrite}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - collabwrite_net
+
+  # ===========================================================================
+  # Redis (Pub/Sub for Multi-Instance Socket.io & Lock Caching)
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: collabwrite_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - collabwrite_net
+
+  # ===========================================================================
+  # Backend Application (Node.js Express + Socket.io + OT Engine)
+  # ===========================================================================
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: collabwrite_backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: ${PORT:-3001}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-collabwrite}
+      DB_USER: ${DB_USER:-collabuser}
+      DB_PASSWORD: ${DB_PASSWORD:-collabpassword}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-super_secret_jwt_key_collabwrite_2025}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-super_secret_refresh_jwt_key_2025}
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:3000}
+    ports:
+      - "${PORT:-3001}:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - collabwrite_net
+
+  # ===========================================================================
+  # Frontend Application (React UI + Local OT Client)
+  # ===========================================================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: collabwrite_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:3001/api}
+      REACT_APP_WS_URL: ${REACT_APP_WS_URL:-http://localhost:3001}
+    ports:
+      - "3000:3000"
+    networks:
+      - collabwrite_net
+
+volumes:
+  pgdata:
+    driver: local
+  redisdata:
+    driver: local
+
+networks:
+  collabwrite_net:
+    driver: bridge

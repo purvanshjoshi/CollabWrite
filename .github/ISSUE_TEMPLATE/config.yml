@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Community Discussions & Support
+    url: https://github.com/purvanshjoshi/CollabWrite/discussions
+    about: Ask questions, share ideas, and discuss architecture with the team.
+  - name: Security Vulnerability Reporting
+    url: mailto:security@collabwrite.dev
+    about: Report security vulnerabilities confidentially.

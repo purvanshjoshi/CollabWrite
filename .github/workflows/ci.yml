@@ -1,0 +1,97 @@
+name: CollabWrite CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint-and-test:
+    name: Lint, Unit & Property Tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: collabwrite_test
+          POSTGRES_USER: collabuser
+          POSTGRES_PASSWORD: collabpassword
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm ci || npm install
+          fi
+
+      - name: Initialize Database Schema
+        run: |
+          PGPASSWORD=collabpassword psql -h localhost -U collabuser -d collabwrite_test -f database/init.sql
+          PGPASSWORD=collabpassword psql -h localhost -U collabuser -d collabwrite_test -f database/seeds/001_sample_data.sql
+
+      - name: Run Linter
+        run: |
+          if npm run | grep -q "lint"; then
+            npm run lint
+          else
+            echo "No lint script found, skipping."
+          fi
+
+      - name: Run Test Suite
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 5432
+          DB_NAME: collabwrite_test
+          DB_USER: collabuser
+          DB_PASSWORD: collabpassword
+          REDIS_HOST: localhost
+          REDIS_PORT: 6379
+          JWT_SECRET: test_jwt_secret_key_1234567890
+        run: |
+          if npm run | grep -q "test"; then
+            npm test
+          else
+            echo "Test suite execution placeholder."
+          fi
+
+  docker-build:
+    name: Verify Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
