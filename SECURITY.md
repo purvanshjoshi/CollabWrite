@@ -2,12 +2,12 @@
 
 ## Supported Versions
 
-CollabWrite team releases patches and security updates for the following versions:
+CollabWrite maintainers release patches and security updates for the following versions:
 
-| Version | Supported          |
-| ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
-| < 1.0   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| 1.0.x   | Yes       |
+| < 1.0   | No        |
 
 ## Reporting a Vulnerability
 

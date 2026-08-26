@@ -13,16 +13,16 @@ CollabWrite adopts a dual-token JWT architecture:
 
 | Capability | Viewer | Editor | Owner | Admin |
 | :--- | :---: | :---: | :---: | :---: |
-| **Read Document Content** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Send OT Edit Operations** | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Move Cursor / Send Presence** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Create / Reply to Comments** | :white_check_mark: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Resolve Comments** | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Acquire Section Write Lock** | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Manage Document Permissions** | :x: | :x: | :white_check_mark: | :white_check_mark: |
-| **Revert Document to Snapshot** | :x: | :white_check_mark: | :white_check_mark: | :white_check_mark: |
-| **Soft Delete Document** | :x: | :x: | :white_check_mark: | :white_check_mark: |
-| **Access System Audit Logs** | :x: | :x: | :x: | :white_check_mark: |
+| **Read Document Content** | Allowed | Allowed | Allowed | Allowed |
+| **Send OT Edit Operations** | Denied | Allowed | Allowed | Allowed |
+| **Move Cursor / Send Presence** | Allowed | Allowed | Allowed | Allowed |
+| **Create / Reply to Comments** | Allowed | Allowed | Allowed | Allowed |
+| **Resolve Comments** | Denied | Allowed | Allowed | Allowed |
+| **Acquire Section Write Lock** | Denied | Allowed | Allowed | Allowed |
+| **Manage Document Permissions** | Denied | Denied | Allowed | Allowed |
+| **Revert Document to Snapshot** | Denied | Allowed | Allowed | Allowed |
+| **Soft Delete Document** | Denied | Denied | Allowed | Allowed |
+| **Access System Audit Logs** | Denied | Denied | Denied | Allowed |
 
 ---
 

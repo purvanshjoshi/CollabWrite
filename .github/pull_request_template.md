@@ -2,12 +2,12 @@
 <!-- Provide a clear, concise summary of your changes. Link any associated issues (e.g., Fixes #12). -->
 
 ## Type of Change
-- [ ] :sparkles: **Feature**: New functionality or algorithm capability
-- [ ] :bug: **Bugfix**: Resolving a defect or race condition
-- [ ] :rocket: **Performance**: Optimization of query, lock cycle, or OT transform
-- [ ] :recycle: **Refactor**: Code cleanup or architectural reorganization
-- [ ] :books: **Documentation**: Updates to guides, specifications, or diagrams
-- [ ] :white_check_mark: **Testing**: Adding unit, integration, or chaos tests
+- [ ] **Feature**: New functionality or algorithm capability
+- [ ] **Bugfix**: Resolving a defect or race condition
+- [ ] **Performance**: Optimization of query, lock cycle, or OT transform
+- [ ] **Refactor**: Code cleanup or architectural reorganization
+- [ ] **Documentation**: Updates to guides, specifications, or diagrams
+- [ ] **Testing**: Adding unit, integration, or chaos tests
 
 ## Core Areas Affected
 - [ ] Operational Transformation (OT) Engine
