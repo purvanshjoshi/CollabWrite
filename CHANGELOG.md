@@ -1,11 +1,21 @@
 # Changelog
 
-All notable changes to the **CollabWrite** project will be documented in this file.
+All notable changes to the **CollabWrite** project are documented in this file.
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+
+## [Unreleased] - 2026-08-26
+
+### Added
+- **repo**: initialize CollabWrite repository with complete production documentation, database schema, and CI/CD templates ([c6c3cd3])
+
+### Fixed
+- **ci**: provide service implementations, Jest test harnesses, ESLint config, and robust CI workflow steps ([cb3e5d9])
+
+### Documentation
+- **style**: standardize professional enterprise formatting and eliminate emoji glyphs across all documentation ([7a407d1])
 
 ## [1.0.0] - 2025-01-15
 

@@ -11,6 +11,7 @@
     "test": "jest --runInBand",
     "test:ot": "jest tests/unit/ot.test.js tests/property/ot_invariants.test.js",
     "test:deadlocks": "jest tests/unit/deadlock.test.js",
+    "changelog": "node scripts/generate-changelog.js",
     "docker:up": "docker-compose up -d --build",
     "docker:down": "docker-compose down",
     "db:init": "psql -U collabuser -d collabwrite -f database/init.sql",
