@@ -44,26 +44,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'npm'
 
       - name: Install Dependencies
-        run: |
-          if [ -f package.json ]; then
-            npm ci || npm install
-          fi
+        run: npm install
 
-      - name: Initialize Database Schema
+      - name: Install PostgreSQL Client
         run: |
-          PGPASSWORD=collabpassword psql -h localhost -U collabuser -d collabwrite_test -f database/init.sql
-          PGPASSWORD=collabpassword psql -h localhost -U collabuser -d collabwrite_test -f database/seeds/001_sample_data.sql
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client
+
+      - name: Initialize Database Schema & Seed Data
+        env:
+          PGPASSWORD: collabpassword
+        run: |
+          psql -h localhost -p 5432 -U collabuser -d collabwrite_test -f database/init.sql
+          psql -h localhost -p 5432 -U collabuser -d collabwrite_test -f database/seeds/001_sample_data.sql
 
       - name: Run Linter
-        run: |
-          if npm run | grep -q "lint"; then
-            npm run lint
-          else
-            echo "No lint script found, skipping."
-          fi
+        run: npm run lint
 
       - name: Run Test Suite
         env:
@@ -76,15 +74,10 @@ jobs:
           REDIS_HOST: localhost
           REDIS_PORT: 6379
           JWT_SECRET: test_jwt_secret_key_1234567890
-        run: |
-          if npm run | grep -q "test"; then
-            npm test
-          else
-            echo "Test suite execution placeholder."
-          fi
+        run: npm test
 
   docker-build:
-    name: Verify Docker Build
+    name: Verify Docker Compose Configuration
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
