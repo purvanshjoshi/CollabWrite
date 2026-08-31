@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ---
 
+## [Unreleased] - 2026-08-31
+
+### Added
+- **ci**: configure CodeQL security analysis, Dependabot updates, and automated changelog generation ([99fed93])
+- **repo**: initialize CollabWrite repository with complete production documentation, database schema, and CI/CD templates ([c6c3cd3])
+
+### Fixed
+- **ci**: provide service implementations, Jest test harnesses, ESLint config, and robust CI workflow steps ([cb3e5d9])
+
+### Documentation
+- **changelog**: auto-update CHANGELOG.md based on conventional commits [skip ci] ([3bc6d46])
+- **style**: standardize professional enterprise formatting and eliminate emoji glyphs across all documentation ([7a407d1])
+
 ## [Unreleased] - 2026-08-26
 
 ### Added
