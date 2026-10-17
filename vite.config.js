@@ -19,10 +19,28 @@ export default defineConfig({
     emptyOutDir: true
   },
   server: {
+    host: '0.0.0.0',
     port: 3000,
     proxy: {
-      '/api': { target: process.env.VITE_API_URL || 'http://localhost:3001', changeOrigin: true },
-      '/socket.io': { target: process.env.VITE_API_URL || 'http://localhost:3001', ws: true }
+      '/api/': { target: process.env.VITE_API_URL || 'http://localhost:3001', changeOrigin: true },
+      '/socket.io': {
+        target: process.env.VITE_API_URL || 'http://localhost:3001',
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', (err) => {
+            if (['ECONNABORTED', 'ECONNRESET', 'ECONNREFUSED'].includes(err?.code)) {
+              return;
+            }
+            // eslint-disable-next-line no-console
+            console.error('[proxy-error]', err.message);
+          });
+        }
+      }
+    }
+  },
+  resolve: {
+    alias: {
+      'socket.io-client': 'socket.io-client/dist/socket.io.js'
     }
   }
 });

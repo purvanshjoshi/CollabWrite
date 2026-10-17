@@ -17,8 +17,9 @@ const { createAuthController } = require('./controllers/authController');
 const { createDocumentController } = require('./controllers/documentController');
 const { createEditController } = require('./controllers/editController');
 const { createAdminController, requireAdmin } = require('./controllers/adminController');
-const { requireAuth, requireDocumentAccess, requireOwner } = require('./middleware/auth');
+const { requireAuth, requireDocumentAccess, requireOwner, HttpError } = require('./middleware/auth');
 const { notFound, errorHandler, asyncHandler } = require('./middleware/errors');
+const { LOCK_MODES } = require('../engine/lock/LockManager');
 
 /**
  * @param {object} deps
@@ -141,6 +142,100 @@ function createApp({ store, engine }) {
   app.post('/api/admin/scheduler/policy', requireAuth, requireAdmin, asyncHandler(admin.setPolicy));
   app.get('/api/admin/audit', requireAuth, requireAdmin, asyncHandler(admin.audit));
   app.post('/api/admin/checkpoint', requireAuth, requireAdmin, asyncHandler(admin.checkpoint));
+
+  // -------------------------------------------------------- inspector
+  app.get(
+    '/api/engine/inspector',
+    requireAuth,
+    asyncHandler(async (_req, res) => {
+      res.json({
+        stats: engine.getStats(),
+        waitForGraph: engine.lockManager.getWaitForEdges(),
+        deadlocks: engine.deadlockDetector.getStats(),
+        scheduler: engine.scheduler.getMetrics()
+      });
+    })
+  );
+  app.post(
+    '/api/engine/scheduler/policy',
+    requireAuth,
+    asyncHandler(async (req, res) => {
+      const policy = String((req.body && req.body.policy) || '').toUpperCase();
+      try {
+        engine.scheduler.setPolicy(policy);
+      } catch (error) {
+        throw new HttpError(400, error.message, 'INVALID_POLICY');
+      }
+      res.json({ policy: engine.scheduler.policy });
+    })
+  );
+  app.post(
+    '/api/engine/deadlock/simulate',
+    requireAuth,
+    asyncHandler(async (_req, res) => {
+      let pageA = 4;
+      let pageB = 5;
+      try {
+        if (engine.storage && typeof engine.storage.getDocumentPages === 'function') {
+          const p1 = engine.storage.getDocumentPages(1);
+          const p2 = engine.storage.getDocumentPages(2);
+          if (p1 && p1.length > 0) pageA = p1[0];
+          if (p2 && p2.length > 0) pageB = p2[0];
+        }
+      } catch {
+        // Fallback to default pages
+      }
+
+      const manager = engine.transactionManager;
+      const txA = manager.begin({ label: 'T-Sim-A' });
+      const txB = manager.begin({ label: 'T-Sim-B' });
+
+      // Step 1: Each transaction takes its first lock on different pages
+      await manager.acquireLock(txA, 1, pageA, LOCK_MODES.EXCLUSIVE);
+      await manager.acquireLock(txB, 2, pageB, LOCK_MODES.EXCLUSIVE);
+
+      // Step 2: Each mutually requests the lock held by the other -> Circular Wait
+      const outcomeA = manager.acquireLock(txA, 2, pageB, LOCK_MODES.EXCLUSIVE)
+        .then(() => 'ACQUIRED', (e) => e.name);
+      const outcomeB = manager.acquireLock(txB, 1, pageA, LOCK_MODES.EXCLUSIVE)
+        .then(() => 'ACQUIRED', (e) => e.name);
+
+      // Step 3: Trigger DeadlockDetector sweep with Tarjan's SCC
+      if (engine.deadlockDetector) {
+        engine.deadlockDetector.detect();
+      }
+
+      const [resA, resB] = await Promise.all([outcomeA, outcomeB]);
+
+      // Complete the survivor transaction and clean up victim
+      if (resA === 'ACQUIRED') {
+        try {
+          await manager.commit(txA);
+        } catch (_err) {
+          try { await manager.abort(txA, 'deadlock-cleanup'); } catch (_e) { /* ignore */ }
+        }
+      } else {
+        try { await manager.abort(txA, 'deadlock-victim-cleanup'); } catch (_err) { /* ignore */ }
+      }
+
+      if (resB === 'ACQUIRED') {
+        try {
+          await manager.commit(txB);
+        } catch (_err) {
+          try { await manager.abort(txB, 'deadlock-cleanup'); } catch (_e) { /* ignore */ }
+        }
+      } else {
+        try { await manager.abort(txB, 'deadlock-victim-cleanup'); } catch (_err) { /* ignore */ }
+      }
+
+      res.json({
+        success: true,
+        deadlocks: engine.deadlockDetector ? engine.deadlockDetector.getStats() : {},
+        outcomes: { txA: resA, txB: resB },
+        pages: { pageA, pageB }
+      });
+    })
+  );
 
   app.use(notFound);
   app.use(errorHandler);

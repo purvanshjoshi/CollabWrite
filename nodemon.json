@@ -1,0 +1,20 @@
+{
+  "watch": [
+    "src/server",
+    "src/engine",
+    "src/config"
+  ],
+  "ext": "js,json",
+  "ignore": [
+    "data/**",
+    "dist/**",
+    "src/client/**",
+    "tests/**",
+    "scripts/**",
+    "*.log",
+    "*.dat",
+    "*.test.js",
+    "*.md"
+  ],
+  "delay": 1000
+}

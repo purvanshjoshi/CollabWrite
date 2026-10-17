@@ -53,8 +53,31 @@ async function main() {
 
   const { server, engine, store, io } = await buildServer();
 
-  await new Promise((resolve) => server.listen(port, host, resolve));
-  log.info('CollabWrite listening', { host, port, recovery: engine.recoveryReport });
+  let bound = false;
+  for (let attempt = 1; attempt <= 5; attempt++) {
+    try {
+      await new Promise((resolve, reject) => {
+        server.once('error', reject);
+        server.listen(port, host, () => {
+          server.removeListener('error', reject);
+          resolve();
+        });
+      });
+      bound = true;
+      break;
+    } catch (err) {
+      if (err.code === 'EADDRINUSE' && attempt < 5) {
+        log.warn('Port in use or lingering in TIME_WAIT, retrying in 1s...', { port, attempt, maxRetries: 5 });
+        await new Promise((r) => setTimeout(r, 1000));
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (bound) {
+    log.info('CollabWrite listening', { host, port, recovery: engine.recoveryReport });
+  }
 
   let shuttingDown = false;
   const shutdown = async (signal) => {
@@ -62,15 +85,23 @@ async function main() {
     shuttingDown = true;
     log.info('Shutting down', { signal });
 
-    io.close();
-    await new Promise((resolve) => server.close(resolve));
-    await engine.stop();
-    await store.close();
+    try {
+      if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections();
+      }
+      io.close();
+      await new Promise((resolve) => server.close(resolve));
+      await engine.stop();
+      await store.close();
+    } catch (_err) {
+      // Ignore cleanup error during shutdown
+    }
     process.exit(0);
   };
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGUSR2', () => shutdown('SIGUSR2'));
 }
 
 if (require.main === module) {

@@ -153,10 +153,35 @@ input:focus, textarea:focus {
 .editor { flex: 1; display: flex; flex-direction: column; padding: 1rem; min-width: 0; }
 .placeholder { color: var(--muted); margin: auto; }
 
-.editor-header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem; }
+.editor-header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
 .editor-header h2 { margin: 0; font-size: 1.15rem; }
 .version { font-size: 0.78rem; color: var(--muted); }
 .participants { font-size: 0.78rem; color: var(--muted); }
+
+.share-panel {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+.share-panel select {
+  font: inherit;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+}
+.share-feedback {
+  font-size: 0.82rem;
+  color: var(--ok);
+  margin-left: 0.5rem;
+}
 
 .editor textarea {
   flex: 1;

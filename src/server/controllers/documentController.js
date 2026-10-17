@@ -99,23 +99,31 @@ function createDocumentController({ store, engine }) {
 
     /** PUT /api/documents/:id/permissions */
     async share(req, res) {
-      const { userId, role } = req.body || {};
-      if (!Number.isInteger(Number(userId))) {
+      const { userId, username, role } = req.body || {};
+      let target;
+      if (userId !== undefined && userId !== null) {
+        if (!Number.isInteger(Number(userId))) {
+          throw new HttpError(400, 'A numeric userId is required', 'INVALID_USER_ID');
+        }
+        target = await store.findUserById(Number(userId));
+      } else if (username) {
+        target = await store.findUserByUsername(String(username).trim());
+      } else {
         throw new HttpError(400, 'A numeric userId is required', 'INVALID_USER_ID');
       }
+
       if (!Object.values(ROLES).includes(role)) {
         throw new HttpError(400, `Role must be one of ${Object.values(ROLES).join(', ')}`, 'INVALID_ROLE');
       }
 
-      const target = await store.findUserById(Number(userId));
-      if (!target) throw new HttpError(404, `User ${userId} not found`, 'USER_NOT_FOUND');
+      if (!target) throw new HttpError(404, `User ${userId || username} not found`, 'USER_NOT_FOUND');
 
-      const permission = await store.setPermission(req.document.id, Number(userId), role);
+      const permission = await store.setPermission(req.document.id, target.id, role);
       await store.recordAudit({
         userId: req.user.id,
         documentId: req.document.id,
         action: 'document.share',
-        details: { grantedTo: Number(userId), role }
+        details: { grantedTo: target.id, role }
       });
       res.json({ permission });
     },

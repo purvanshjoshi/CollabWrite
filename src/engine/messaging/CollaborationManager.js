@@ -135,6 +135,7 @@ class CollaborationManager {
     this.transport.broadcast(event.docId, event.type, {
       sequence: event.sequence,
       publishedAt: event.publishedAt,
+      docId: event.docId,
       ...event.payload
     });
   }

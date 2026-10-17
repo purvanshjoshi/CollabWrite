@@ -21,13 +21,13 @@
 INSERT INTO users (id, username, email, password_hash, full_name, role, is_active)
 VALUES
   (1, 'ananya', 'ananya@collabwrite.dev',
-      '$2b$10$B6ZOkzKcAPd3L9xrk0f/BO/8y/peBHcKolzS1ti1lMakn/QnzZism',
+      '$2b$10$wAjp5sJ9UEIk2yxivko9O.3.lBxW/TfDSe3RHRYy3USUjcpbhXJpW',
       'Ananya Sharma', 'admin', TRUE),
   (2, 'rahul', 'rahul@collabwrite.dev',
-      '$2b$10$B6ZOkzKcAPd3L9xrk0f/BO/8y/peBHcKolzS1ti1lMakn/QnzZism',
+      '$2b$10$wAjp5sJ9UEIk2yxivko9O.3.lBxW/TfDSe3RHRYy3USUjcpbhXJpW',
       'Rahul Verma', 'user', TRUE),
   (3, 'priya', 'priya@collabwrite.dev',
-      '$2b$10$B6ZOkzKcAPd3L9xrk0f/BO/8y/peBHcKolzS1ti1lMakn/QnzZism',
+      '$2b$10$wAjp5sJ9UEIk2yxivko9O.3.lBxW/TfDSe3RHRYy3USUjcpbhXJpW',
       'Priya Nair', 'user', TRUE)
 ON CONFLICT (id) DO NOTHING;
 
