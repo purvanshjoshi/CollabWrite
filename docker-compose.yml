@@ -71,6 +71,27 @@ services:
       LOCK_TIMEOUT_MS: ${LOCK_TIMEOUT_MS:-5000}
       DEADLOCK_CHECK_INTERVAL_MS: ${DEADLOCK_CHECK_INTERVAL_MS:-250}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+
+      # nginx always sits in front in this topology, so one proxy hop is
+      # trusted. Without this the app sees nginx's address on every request
+      # and express-rate-limit buckets all clients into a single counter.
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+
+      STORE_DRIVER: ${STORE_DRIVER:-postgres}
+      DB_SSL: ${DB_SSL:-false}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-10}
+      # Raise both for a classroom demo: everyone behind one campus NAT
+      # address shares a bucket even with TRUST_PROXY set correctly.
+      AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT:-50}
+      API_RATE_LIMIT: ${API_RATE_LIMIT:-600}
+
+      # Durability against a machine crash. Only ever false in tests.
+      WAL_SYNC_ON_COMMIT: ${WAL_SYNC_ON_COMMIT:-true}
+      ENGINE_INDEX_ORDER: ${ENGINE_INDEX_ORDER:-4}
+      ENABLE_METRICS: ${ENABLE_METRICS:-true}
     ports:
       - "127.0.0.1:${PORT:-3001}:3001"
     volumes:
