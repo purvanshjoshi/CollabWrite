@@ -18,11 +18,14 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD:-collabpassword}
       PGDATA: /var/lib/postgresql/data/pgdata
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/01_init.sql
-      - ./database/seeds/001_sample_data.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      # database/seeds/001_sample_data.sql is deliberately NOT mounted. It
+      # creates three accounts with the password 'password123', one of them
+      # an admin who can read the audit log and engine internals. Load it by
+      # hand for local work; never let a deployment create it on first boot.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-collabuser} -d ${DB_NAME:-collabwrite}"]
       interval: 10s
@@ -69,7 +72,7 @@ services:
       DEADLOCK_CHECK_INTERVAL_MS: ${DEADLOCK_CHECK_INTERVAL_MS:-250}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
-      - "${PORT:-3001}:3001"
+      - "127.0.0.1:${PORT:-3001}:3001"
     volumes:
       - enginedata:/var/lib/collabwrite
     healthcheck:
@@ -89,7 +92,12 @@ services:
       context: .
       dockerfile: Dockerfile.frontend
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001}
+        # '-' rather than ':-': an empty value must stay empty. Empty means the
+        # client uses same-origin relative URLs, which nginx proxies to the
+        # backend, so browsers on other machines work. With ':-' an operator who
+        # deliberately cleared this would still get localhost baked into the
+        # bundle, and every remote browser would call its own machine.
+        VITE_API_URL: ${VITE_API_URL-}
     container_name: collabwrite_frontend
     restart: unless-stopped
     depends_on:
