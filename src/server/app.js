@@ -30,6 +30,18 @@ const { LOCK_MODES } = require('../engine/lock/LockManager');
 function createApp({ store, engine }) {
   const app = express();
 
+  // Behind a reverse proxy (nginx in Compose, the platform router on Render or
+  // Railway) every request arrives from the proxy's address. Left unset,
+  // express-rate-limit buckets the whole world into one counter, so a single
+  // busy client exhausts the budget for everyone -- and it logs a validation
+  // error about the unexpected X-Forwarded-For header.
+  //
+  // The value is the number of proxy hops to trust, and it defaults to 0
+  // because trusting a proxy that is not there lets any client spoof
+  // X-Forwarded-For and side-step the limiter entirely. Set TRUST_PROXY=1 when
+  // exactly one proxy sits in front.
+  app.set('trust proxy', Number(process.env.TRUST_PROXY || 0));
+
   app.use(helmet());
 
   // CORS is an allowlist, never a wildcard. A permissive origin combined with

@@ -60,7 +60,7 @@ source of truth per topic is the correction.
 |----------|--------|
 | [`testing/testing-strategy.md`](testing/testing-strategy.md) | Test layers, property testing, coverage, and known gaps |
 | [`workflows/user-workflows.md`](workflows/user-workflows.md) | End-to-end walkthroughs from registration to crash recovery |
-| [`deployment/docker-and-k8s.md`](deployment/docker-and-k8s.md) | Why the backend is single-instance, Docker, Kubernetes, backups |
+| [`deployment/docker-and-k8s.md`](deployment/docker-and-k8s.md) | Why the backend is single-instance, Docker, Kubernetes, Render and Vercel, backups |
 | [`monitoring/monitoring-and-maintenance.md`](monitoring/monitoring-and-maintenance.md) | The six evaluation metrics, health checks, tuning, troubleshooting |
 | [`security/security-architecture.md`](security/security-architecture.md) | Authentication, RBAC, input handling, and what is deliberately not implemented |
 

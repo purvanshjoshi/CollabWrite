@@ -165,7 +165,82 @@ Required choices, and why:
 The readiness probe is what makes a restart safe: the new pod is kept out of
 the Service until recovery has replayed the log.
 
-## 6. Reverse proxy
+## 6. Managed platforms (Render + Vercel)
+
+The repository carries two blueprints for this split:
+
+| Piece | Host | File |
+|-------|------|------|
+| React client (static bundle) | Any CDN host; Vercel here | `vercel.json` |
+| Backend + Academic Engine | A container host with a disk; Render here | `render.yaml` |
+| PostgreSQL support data | The same platform's managed database | `render.yaml` |
+
+### Why the backend cannot be serverless
+
+A serverless function host -- Vercel Functions, Lambda, Cloud Run's default
+mode -- is the wrong shape for this backend, for three independent reasons:
+
+1. **Ephemeral filesystem.** `documents.dat` and `wal.log` are the database.
+   A filesystem discarded between invocations discards the data.
+2. **Automatic horizontal scaling.** The platform starts as many instances as
+   it likes. Section 1 explains why two instances on one data directory is
+   corruption. Serverless hosts offer no way to pin to exactly one process.
+3. **No long-lived connections.** Socket.IO holds a connection open for the
+   session; request-scoped functions cannot.
+
+Points 1 and 3 have workarounds. Point 2 does not, and it is fatal. Deploy the
+backend to a container or VM host, never to a function host.
+
+### Render
+
+`render.yaml` is a Blueprint: dashboard -> New -> Blueprint -> this repository.
+It provisions the web service, the disk and the database together.
+
+Render enforces section 1's constraint rather than merely documenting it. A
+service with a disk attached cannot be scaled past one instance, and
+disk-backed services give up zero-downtime deploys: the old instance is
+stopped before the new one starts, so two versions never write the same disk.
+
+A consequence worth expecting: **every deploy is an abrupt stop, so every
+deploy exercises crash recovery.** The new process replays `wal.log` through
+the analysis, redo and undo passes, and `/health` reports `starting` until it
+finishes. That is the recovery system working, not a deployment fault.
+
+Two manual steps the Blueprint cannot do:
+
+- **Apply the schema once**, after the first deploy:
+  `psql "<external connection string>" -f database/init.sql`
+- **Set `CLIENT_ORIGIN`** to the deployed client's origin. It is declared
+  `sync: false` because only you know that hostname.
+
+A free instance cannot attach a disk and spins down when idle, which discards
+every document. A paid instance is a requirement here, not a preference.
+
+### Vercel
+
+`vercel.json` builds `npm run client:build` and publishes `dist/client`. Set
+one environment variable in the Vercel project:
+
+```
+VITE_API_URL=https://<your-backend-host>
+```
+
+It is read at **build** time and baked into the bundle, so changing it needs a
+redeploy, not a restart.
+
+### The two things that break this split
+
+**Mixed content.** A client served over HTTPS cannot call an HTTP backend; the
+browser blocks it. This is why a managed host with automatic TLS is easier
+here than a bare VM, which needs a domain and certificates before anything
+works at all.
+
+**CORS.** The client and the API are now different origins, so `CLIENT_ORIGIN`
+must name the client's origin exactly. Preview deployments each get their own
+hostname and must be added to the comma-separated list, or they will be
+rejected while production works.
+
+## 7. Reverse proxy
 
 `docker/nginx.conf` is the working example. The parts that matter:
 
@@ -186,7 +261,7 @@ to.
 For TLS, terminate at the proxy and set `CLIENT_ORIGIN` to the public
 origin.
 
-## 7. Backup and restore
+## 8. Backup and restore
 
 ```bash
 docker compose stop backend     # quiesce first; see below
@@ -204,11 +279,15 @@ same window also keeps metadata consistent with the engine snapshot.
 Restore in the same order: engine files, then the database, then start the
 backend and let recovery run.
 
-## 8. Pre-deployment checklist
+## 9. Pre-deployment checklist
 
 - [ ] `JWT_SECRET` set to a long random value, not the placeholder
 - [ ] Seed data **not** loaded (`password123` accounts, one of them admin)
 - [ ] `CLIENT_ORIGIN` set to the real origin, not `*`
+- [ ] `TRUST_PROXY` set to the number of proxy hops (1 behind nginx or a
+      platform router; 0 when Node is reached directly)
+- [ ] `JWT_EXPIRATION` long enough for the session, since there is no
+      refresh-token flow
 - [ ] `WAL_SYNC_ON_COMMIT=true`
 - [ ] `ENGINE_DATA_DIR` on persistent storage, backed up
 - [ ] `ENGINE_BUFFER_FRAMES` comfortably above `ENGINE_WORKERS`

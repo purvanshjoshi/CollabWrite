@@ -1,0 +1,162 @@
+# =============================================================================
+# CollabWrite - Render Blueprint
+#
+# Deploys the backend (Express API, Socket.IO and the Academic Engine) plus the
+# PostgreSQL support database. The React client is NOT deployed here; it is a
+# static bundle and belongs on a CDN host (see vercel.json).
+#
+# THE CONSTRAINT THIS FILE ENCODES
+#   The lock table, buffer pool and WAL writer are in-process data structures.
+#   Two backend instances pointing at one documents.dat would each believe they
+#   held the only lock table and would interleave writes into one log: that is
+#   corruption, not slow performance. So numInstances is 1 and must stay 1.
+#
+#   Render enforces this for us. A service with a disk attached cannot be
+#   scaled past one instance, and disk-backed services give up zero-downtime
+#   deploys -- Render stops the old instance before starting the new one,
+#   precisely so two versions never write the same disk at once.
+#
+#   A consequence worth knowing: every deploy is an abrupt stop, so every
+#   deploy exercises crash recovery. The new process replays wal.log through
+#   the analysis, redo and undo passes before /health reports 'ok'.
+#
+# Usage: Render dashboard -> New -> Blueprint -> point at this repository.
+# =============================================================================
+
+services:
+  - type: web
+    name: collabwrite-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile.backend
+    # Dockerfile.backend's final stage is 'production': runtime dependencies
+    # only, running as the unprivileged 'node' user.
+
+    # Free instances cannot attach a disk and spin down when idle, which would
+    # discard every document. A paid instance is a hard requirement here, not a
+    # preference. Confirm in the dashboard that your plan allows disks.
+    plan: starter
+    region: singapore
+
+    # /health returns status 'starting' until crash recovery finishes, so this
+    # probe waits for a recovered engine rather than merely an open port.
+    healthCheckPath: /health
+
+    numInstances: 1
+
+    # documents.dat, wal.log, index.dat and metrics.log live here. THIS is the
+    # database of record for document content; PostgreSQL below holds only
+    # support data. Losing this disk loses every document, permanently.
+    disk:
+      name: enginedata
+      mountPath: /var/lib/collabwrite
+      sizeGB: 1
+
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: HOST
+        value: 0.0.0.0
+      - key: LOG_LEVEL
+        value: info
+
+      # Render's router sits in front of the app, so one hop is trusted. Left
+      # at 0, express-rate-limit would bucket every client into one counter.
+      - key: TRUST_PROXY
+        value: 1
+
+      # Set this to the deployed client's origin, e.g.
+      # https://collabwrite.vercel.app. Comma-separate to allow preview
+      # deployments, which each get their own hostname. There is no '*'
+      # fallback by design.
+      - key: CLIENT_ORIGIN
+        sync: false
+
+      - key: STORE_DRIVER
+        value: postgres
+      - key: ENGINE_DATA_DIR
+        value: /var/lib/collabwrite
+
+      # Generated once by Render and kept across deploys. Never a placeholder.
+      - key: JWT_SECRET
+        generateValue: true
+      # Longer than the 15 minute default: there is no refresh-token flow, so a
+      # short lifetime signs users out mid-session with no way back in.
+      - key: JWT_EXPIRATION
+        value: 8h
+      - key: BCRYPT_ROUNDS
+        value: 10
+
+      - key: AUTH_RATE_LIMIT
+        value: 50
+      - key: API_RATE_LIMIT
+        value: 600
+
+      # Durability against a machine crash. Only ever false in tests.
+      - key: WAL_SYNC_ON_COMMIT
+        value: true
+
+      # Frames must stay comfortably above the worker count, or concurrent
+      # transactions contend for frames and the pool reports saturation.
+      - key: ENGINE_WORKERS
+        value: 4
+      - key: ENGINE_BUFFER_FRAMES
+        value: 16
+      - key: SCHEDULER_POLICY
+        value: FIFO
+      - key: LOCK_TIMEOUT_MS
+        value: 5000
+      - key: DEADLOCK_CHECK_INTERVAL_MS
+        value: 250
+      - key: ENGINE_INDEX_ORDER
+        value: 4
+      - key: ENABLE_METRICS
+        value: true
+
+      # Internal connection details; traffic stays inside Render's network, so
+      # DB_SSL is false. Set it true only when connecting over the public host.
+      - key: DB_HOST
+        fromDatabase:
+          name: collabwrite-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: collabwrite-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: collabwrite-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: collabwrite-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: collabwrite-db
+          property: password
+      - key: DB_SSL
+        value: false
+      - key: DB_POOL_MIN
+        value: 2
+      - key: DB_POOL_MAX
+        value: 20
+
+databases:
+  # Support data only: users, document metadata, permissions and audit logs.
+  # No document content, versions, locks or indexes (rules.md section 8).
+  #
+  # Render does not run database/init.sql for you. After the first deploy,
+  # apply it once:
+  #   psql "<external connection string>" -f database/init.sql
+  # Do NOT apply database/seeds/001_sample_data.sql to a deployment: it creates
+  # accounts with the password 'password123', one of them an admin.
+  #
+  # The free database plan expires; move to a paid plan for anything that must
+  # outlive the demo.
+  - name: collabwrite-db
+    databaseName: collabwrite
+    user: collabuser
+    plan: free
+    region: singapore
