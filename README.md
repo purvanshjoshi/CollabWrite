@@ -152,7 +152,8 @@ winners, the losers and the page counts.
 |------------|-----|
 | **No Operational Transformation.** Concurrent edits to the same document serialise; a stale edit gets a 409 and the client rebases automatically. | `design.md` section 10. 2PL plus version checks is correct; OT buys convenience, and a subtly wrong OT engine corrupts documents. |
 | **Edits to one document do not run in parallel.** An edit locks every page of its document, in ascending order. | An insert near the start shifts every later chunk. The ordering makes the edit path deadlock-free by construction; the cost is intra-document concurrency. |
-| **The backend is single-instance.** Two processes on one data directory would corrupt it. | The lock table, buffer pool and WAL writer are in-process. See [`docs/deployment/`](docs/deployment/docker-and-k8s.md) section 1. |
+| **The backend is single-instance.** Two processes on one data directory would corrupt it. | The lock table, buffer pool and WAL writer are in-process. See [`docs/deployment/`](docs/deployment/docker-and-k8s.md) section 1, and
+[`google-cloud-vm.md`](docs/deployment/google-cloud-vm.md) to deploy it. |
 | **The WAL is never truncated**, so it grows and recovery time grows with it. | `design.md` section 12 lists checkpoint truncation as a future improvement. |
 | **Pages are not reclaimed** after a document is deleted. | Reclaiming needs a free-space map, which the design does not specify. An unreferenced chain is inert. |
 | **Workers are not OS threads.** | They are explicit objects with an IDLE/BUSY state machine on the event loop. Real threads cannot share the lock table and buffer pool without routing every page through IPC, which would hide the mechanisms this project exists to show. Recorded as a trade-off, not glossed over. |

@@ -167,6 +167,11 @@ the Service until recovery has replayed the log.
 
 ## 6. Managed platforms (Render + Vercel)
 
+> Deploying to a Google Cloud VM instead? [`google-cloud-vm.md`](google-cloud-vm.md)
+> is a step-by-step runbook for that path — the one this project was actually
+> demonstrated on. It needs no platform blueprint, because a VM runs the
+> existing `docker-compose.yml` unchanged.
+
 The repository carries two blueprints for this split:
 
 | Piece | Host | File |
